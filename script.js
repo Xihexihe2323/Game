@@ -4,21 +4,17 @@ const ctx = canvas.getContext('2d');
 
 // Fungsi untuk mengatur ukuran canvas
 function resizeCanvas() {
-    canvas.width = window.innerWidth; // Mengatur lebar canvas ke lebar jendela
-    canvas.height = window.innerHeight; // Mengatur tinggi canvas ke tinggi jendela
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 }
 
 // Panggil fungsi resizeCanvas saat halaman dimuat
 resizeCanvas();
 
-// Mendefinisikan ukuran canvas
-let canvasWidth = canvas.width;
-let canvasHeight = canvas.height;
-
 // Mendefinisikan pemain
 const player = {
-    x: canvasWidth / 2 - 25, // Memusatkan pemain
-    y: canvasHeight - 50,
+    x: canvas.width / 2 - 25,
+    y: canvas.height - 50,
     width: 50,
     height: 50,
     speed: 5
@@ -26,12 +22,12 @@ const player = {
 
 // Mendefinisikan musuh
 const enemy = {
-    x: Math.random() * (canvasWidth - 50),
+    x: Math.random() * (canvas.width - 50),
     y: 0,
     width: 50,
     height: 50,
     speed: 2,
-    hit: false
+    visible: true
 };
 
 // Mendefinisikan peluru
@@ -47,7 +43,44 @@ const bullet = {
 // Variabel skor
 let score = 0;
 
-// Menggambar pemain, musuh, peluru, dan skor
+// Variabel kontrol keyboard
+let rightPressed = false;
+let leftPressed = false;
+
+// Event listeners untuk keyboard
+document.addEventListener('keydown', keyDownHandler);
+document.addEventListener('keyup', keyUpHandler);
+
+function keyDownHandler(e) {
+    if (e.key === 'Right' || e.key === 'ArrowRight') {
+        rightPressed = true;
+    } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
+        leftPressed = true;
+    } else if (e.key === ' ' && !bullet.fired) {
+        fireBullet();
+    }
+}
+
+function keyUpHandler(e) {
+    if (e.key === 'Right' || e.key === 'ArrowRight') {
+        rightPressed = false;
+    } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
+        leftPressed = false;
+    }
+}
+
+function fireBullet() {
+    bullet.x = player.x + player.width / 2 - bullet.width / 2;
+    bullet.y = player.y;
+    bullet.fired = true;
+}
+
+function resetEnemy() {
+    enemy.x = Math.random() * (canvas.width - enemy.width);
+    enemy.y = 0;
+    enemy.visible = true;
+}
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
@@ -55,9 +88,11 @@ function draw() {
     ctx.fillStyle = 'blue';
     ctx.fillRect(player.x, player.y, player.width, player.height);
     
-    // Gambar musuh
-    ctx.fillStyle = enemy.hit ? 'orange' : 'red'; // Warna saat terkena tembakan
-    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+    // Gambar musuh jika visible
+    if (enemy.visible) {
+        ctx.fillStyle = 'red';
+        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+    }
     
     // Gambar peluru
     if (bullet.fired) {
@@ -68,12 +103,11 @@ function draw() {
     // Gambar skor
     ctx.fillStyle = 'black';
     ctx.font = '20px Arial';
-    ctx.fillText(`Score: ${score}`, 10, 20);
+    ctx.fillText(`Score: ${score}`, 10, 30);
 }
 
-// Mengupdate posisi pemain, musuh, dan peluru
 function update() {
-    // Mengupdate posisi pemain
+    // Update posisi pemain
     if (rightPressed && player.x < canvas.width - player.width) {
         player.x += player.speed;
     }
@@ -81,15 +115,15 @@ function update() {
         player.x -= player.speed;
     }
 
-    // Mengupdate posisi musuh
-    enemy.y += enemy.speed;
-    if (enemy.y > canvas.height) {
-        enemy.y = 0;
-        enemy.x = Math.random() * (canvas.width - 50);
-        enemy.hit = false; // Reset status hit
+    // Update posisi musuh
+    if (enemy.visible) {
+        enemy.y += enemy.speed;
+        if (enemy.y > canvas.height) {
+            resetEnemy();
+        }
     }
 
-    // Mengupdate posisi peluru
+    // Update posisi peluru
     if (bullet.fired) {
         bullet.y -= bullet.speed;
         if (bullet.y < 0) {
@@ -97,53 +131,26 @@ function update() {
         }
     }
 
-    // Cek apakah peluru mengenai musuh
-    if (bullet.fired && bullet.x < enemy.x + enemy.width && bullet.x + bullet.width > enemy.x && bullet.y < enemy.y + enemy.height && bullet.y + bullet.height > enemy.y) {
-        bullet.fired = false; // Reset peluru
-        enemy.hit = true; // Set musuh terkena tembakan score += 10; // Tambah skor
-        setTimeout(() => {
-            enemy.hit = false; // Reset status hit setelah beberapa detik
-        }, 500); // Animasi selama 500ms
+    // Deteksi tumbukan
+    if (enemy.visible && bullet.fired &&
+        bullet.x < enemy.x + enemy.width &&
+        bullet.x + bullet.width > enemy.x &&
+        bullet.y < enemy.y + enemy.height &&
+        bullet.y + bullet.height > enemy.y) {
+        
+        score += 10;
+        enemy.visible = false;
+        bullet.fired = false;
+        
+        // Muncul kembali setelah 1 detik
+        setTimeout(resetEnemy, 1000);
     }
 }
 
-// Mengatur event listener untuk keyboard
-let rightPressed = false;
-let leftPressed = false;
-
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight') {
-        rightPressed = true;
-    } else if (e.key === 'ArrowLeft') {
-        leftPressed = true;
-    } else if (e.key === ' ') {
-        if (!bullet.fired) {
-            bullet.x = player.x + player.width / 2;
-            bullet.y = player.y;
-            bullet.fired = true;
-        }
-    }
-});
-
-document.addEventListener('keyup', (e) => {
-    if (e.key === 'ArrowRight') {
-        rightPressed = false;
-    } else if (e.key === 'ArrowLeft') {
-        leftPressed = false;
-    }
-});
-
-// Mengatur event listener untuk perubahan ukuran jendela
-window.addEventListener('resize', () => {
-    resizeCanvas();
-    canvasWidth = canvas.width;
-    canvasHeight = canvas.height;
-    player.x = canvasWidth / 2 - 25; // Memusatkan pemain
-    player.y = canvasHeight - 50;
-});
-
-// Menggambar dan mengupdate game
-setInterval(() => {
-    draw();
+function gameLoop() {
     update();
-}, 1000 / 60); // 60 FPS
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
